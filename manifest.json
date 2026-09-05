@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Response Collector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Collect labeled Qwen assistant responses with a small amount of conversation context.",
   "permissions": [
     "storage",
