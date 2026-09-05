@@ -17,6 +17,7 @@
     "[class*=ChatItem]",
     "[role=article]"
   ];
+  const CONVERSATION_ROOT_SELECTORS = ["main", "[role=main]"];
   const EXPLICIT_ROLE_ATTRIBUTES = [
     "data-message-role",
     "data-message-author-role",
@@ -190,13 +191,29 @@
     });
   }
 
+  function getConversationRoot(root) {
+    if (root !== document) {
+      return root;
+    }
+
+    for (const selector of CONVERSATION_ROOT_SELECTORS) {
+      const candidate = document.querySelector(selector);
+      if (candidate) {
+        return candidate;
+      }
+    }
+
+    return document.body;
+  }
+
   function findMessages(root = document) {
     const byElement = new Map();
+    const searchRoot = getConversationRoot(root);
 
     for (const selector of SELECTORS) {
       let elements = [];
       try {
-        elements = Array.from(root.querySelectorAll(selector));
+        elements = Array.from(searchRoot.querySelectorAll(selector));
       } catch (error) {
         console.debug("[response-collector] selector skipped", selector, error);
       }
@@ -406,3 +423,4 @@
     start
   });
 })();
+
