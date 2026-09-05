@@ -1,11 +1,14 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Response Collector",
   "version": "0.1.0",
   "description": "Collect labeled Qwen assistant responses with a small amount of conversation context.",
   "permissions": [
     "storage",
     "downloads"
+  ],
+  "host_permissions": [
+    "https://chat.qwen.ai/*"
   ],
   "content_scripts": [
     {
@@ -23,7 +26,7 @@
       "run_at": "document_idle"
     }
   ],
-  "browser_action": {
+  "action": {
     "default_title": "Response Collector",
     "default_popup": "src/popup/popup.html"
   },
@@ -34,3 +37,4 @@
     }
   }
 }
+
