@@ -29,22 +29,17 @@
     const date = new Date().toISOString().slice(0, 10);
     const filename = `response-collector-${date}.jsonl`;
 
-    try {
-      if (browser.downloads?.download) {
-        return await browser.downloads.download({
-          url: objectUrl,
-          filename,
-          saveAs: true,
-          conflictAction: "uniquify"
-        });
-      }
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
 
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
+    try {
       anchor.click();
       return null;
     } finally {
+      anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
     }
   }

@@ -28,35 +28,10 @@
     "data-sender"
   ];
   const BLOCK_TAGS = new Set([
-    "ADDRESS",
-    "ARTICLE",
-    "ASIDE",
-    "BLOCKQUOTE",
-    "DIV",
-    "DL",
-    "FIELDSET",
-    "FIGCAPTION",
-    "FIGURE",
-    "FOOTER",
-    "FORM",
-    "H1",
-    "H2",
-    "H3",
-    "H4",
-    "H5",
-    "H6",
-    "HEADER",
-    "HR",
-    "LI",
-    "MAIN",
-    "NAV",
-    "OL",
-    "P",
-    "PRE",
-    "SECTION",
-    "TABLE",
-    "TR",
-    "UL"
+    "ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "DIV", "DL", "FIELDSET",
+    "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "H1", "H2", "H3", "H4",
+    "H5", "H6", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE",
+    "SECTION", "TABLE", "TR", "UL"
   ]);
 
   let observer = null;
@@ -68,95 +43,56 @@
   }
 
   function isVisible(element) {
-    if (!(element instanceof HTMLElement)) {
-      return false;
-    }
-
+    if (!(element instanceof HTMLElement)) return false;
     const style = window.getComputedStyle(element);
     return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
   }
 
   function roleFromValue(value) {
     const normalized = String(value || "").toLowerCase();
-    if (/\b(assistant|bot|model|ai)\b/.test(normalized)) {
-      return "assistant";
-    }
-    if (/\b(user|human|question)\b/.test(normalized)) {
-      return "user";
-    }
+    if (/\b(assistant|bot|model|ai)\b/.test(normalized)) return "assistant";
+    if (/\b(user|human|question)\b/.test(normalized)) return "user";
     return null;
   }
 
   function roleFromElement(element) {
-    const explicitValues = EXPLICIT_ROLE_ATTRIBUTES
-      .map((attribute) => element.getAttribute(attribute))
-      .filter(Boolean);
-
-    for (const value of explicitValues) {
-      const role = roleFromValue(value);
-      if (role) {
-        return role;
-      }
+    for (const attribute of EXPLICIT_ROLE_ATTRIBUTES) {
+      const role = roleFromValue(element.getAttribute(attribute));
+      if (role) return role;
     }
 
     const descendant = element.querySelector(EXPLICIT_ROLE_ATTRIBUTES.map((attribute) => `[${attribute}]`).join(","));
     if (descendant) {
       for (const attribute of EXPLICIT_ROLE_ATTRIBUTES) {
         const role = roleFromValue(descendant.getAttribute(attribute));
-        if (role) {
-          return role;
-        }
+        if (role) return role;
       }
     }
 
-    const semanticValue = [
+    return roleFromValue([
       element.getAttribute("aria-label"),
       element.getAttribute("data-testid"),
       element.id,
       typeof element.className === "string" ? element.className : ""
-    ].filter(Boolean).join(" ");
-    return roleFromValue(semanticValue);
+    ].filter(Boolean).join(" "));
   }
 
   function renderText(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      return node.nodeValue || "";
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-      return "";
-    }
-
-    const element = /** @type {HTMLElement} */ (node);
-    if (element.tagName === "BR") {
-      return "\n";
-    }
-    if (element.tagName === "PRE") {
-      return `\n${element.textContent || ""}\n`;
-    }
-
+    if (node.nodeType === Node.TEXT_NODE) return node.nodeValue || "";
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const element = node;
+    if (element.tagName === "BR") return "\n";
+    if (element.tagName === "PRE") return `\n${element.textContent || ""}\n`;
     const content = Array.from(element.childNodes).map(renderText).join("");
     return BLOCK_TAGS.has(element.tagName) ? `${content}\n` : content;
   }
 
   function cleanVisibleText(element) {
-    if (!(element instanceof HTMLElement)) {
-      return "";
-    }
-
+    if (!(element instanceof HTMLElement)) return "";
     const clone = element.cloneNode(true);
     clone.querySelectorAll([
-      `[${CONTROL_ATTRIBUTE}]`,
-      "button",
-      "[role=button]",
-      "svg",
-      "script",
-      "style",
-      "textarea",
-      "input",
-      "[aria-hidden=true]",
-      "[role=toolbar]",
-      "header",
-      "nav"
+      `[${CONTROL_ATTRIBUTE}]`, "button", "[role=button]", "svg", "script", "style",
+      "textarea", "input", "[aria-hidden=true]", "[role=toolbar]", "header", "nav"
     ].join(",")).forEach((node) => node.remove());
 
     return renderText(clone)
@@ -167,42 +103,26 @@
   }
 
   function candidateRank(element) {
-    if (element.hasAttribute("data-message-id")) {
-      return 100;
-    }
-    if (EXPLICIT_ROLE_ATTRIBUTES.some((attribute) => element.hasAttribute(attribute))) {
-      return 90;
-    }
-    if (element.getAttribute("data-testid")?.toLowerCase().includes("message")) {
-      return 80;
-    }
-    if (element.className && String(element.className).toLowerCase().includes("message")) {
-      return 60;
-    }
+    if (element.hasAttribute("data-message-id")) return 100;
+    if (EXPLICIT_ROLE_ATTRIBUTES.some((attribute) => element.hasAttribute(attribute))) return 90;
+    if (element.getAttribute("data-testid")?.toLowerCase().includes("message")) return 80;
+    if (element.className && String(element.className).toLowerCase().includes("message")) return 60;
     return 50;
   }
 
   function sortDocumentOrder(candidates) {
     return candidates.sort((left, right) => {
-      if (left.element === right.element) {
-        return 0;
-      }
+      if (left.element === right.element) return 0;
       return left.element.compareDocumentPosition(right.element) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
     });
   }
 
   function getConversationRoot(root) {
-    if (root !== document) {
-      return root;
-    }
-
+    if (root !== document) return root;
     for (const selector of CONVERSATION_ROOT_SELECTORS) {
       const candidate = document.querySelector(selector);
-      if (candidate) {
-        return candidate;
-      }
+      if (candidate) return candidate;
     }
-
     return document.body;
   }
 
@@ -219,33 +139,20 @@
       }
 
       for (const element of elements) {
-        if (!isVisible(element)) {
-          continue;
-        }
-
+        if (!isVisible(element)) continue;
         const role = roleFromElement(element);
-        if (!role) {
-          continue;
-        }
-
+        if (!role) continue;
         const text = cleanVisibleText(element);
-        if (!text) {
-          continue;
-        }
-
+        if (!text) continue;
         const existing = byElement.get(element);
         const candidate = { element, role, text, rank: candidateRank(element) };
-        if (!existing || candidate.rank > existing.rank) {
-          byElement.set(element, candidate);
-        }
+        if (!existing || candidate.rank > existing.rank) byElement.set(element, candidate);
       }
     }
 
     const candidates = Array.from(byElement.values());
     return sortDocumentOrder(candidates).filter((candidate) => !candidates.some((other) => (
-      other !== candidate &&
-      other.role === candidate.role &&
-      other.rank >= candidate.rank &&
+      other !== candidate && other.role === candidate.role && other.rank >= candidate.rank &&
       other.element.contains(candidate.element)
     )));
   }
@@ -263,10 +170,7 @@
 
     return {
       response: cleanVisibleText(element),
-      context: preceding.map((candidate) => ({
-        role: candidate.role,
-        content: candidate.text
-      }))
+      context: preceding.map((candidate) => ({ role: candidate.role, content: candidate.text }))
     };
   }
 
@@ -280,20 +184,12 @@
 
   async function syncControlState(element, controls) {
     const capture = captureConversation(element);
-    if (!capture.response) {
-      return;
-    }
-
+    if (!capture.response) return;
     const id = window.ResponseCollectorStorage.createId({
-      source: SOURCE,
-      url: window.location.href,
-      context: capture.context,
-      response: capture.response
+      source: SOURCE, url: window.location.href, context: capture.context, response: capture.response
     });
     const sample = await window.ResponseCollectorStorage.findById(id);
-    if (sample) {
-      updateControlState(controls, sample.label);
-    }
+    if (sample) updateControlState(controls, sample.label);
   }
 
   async function collect(element, controls, button, label) {
@@ -306,10 +202,7 @@
 
     const sample = {
       id: window.ResponseCollectorStorage.createId({
-        source: SOURCE,
-        url: window.location.href,
-        context: capture.context,
-        response: capture.response
+        source: SOURCE, url: window.location.href, context: capture.context, response: capture.response
       }),
       source: SOURCE,
       url: window.location.href,
@@ -336,6 +229,9 @@
   }
 
   function createControls(element) {
+    const existing = element.nextElementSibling;
+    if (existing?.hasAttribute(CONTROL_ATTRIBUTE)) return existing;
+
     const controls = document.createElement("div");
     controls.className = "response-collector-controls";
     controls.setAttribute(CONTROL_ATTRIBUTE, "true");
@@ -367,22 +263,37 @@
     return controls;
   }
 
-  function attachControls() {
-    for (const candidate of findMessages()) {
-      if (candidate.role !== "assistant" || candidate.element.hasAttribute(ATTACHED_ATTRIBUTE)) {
-        continue;
-      }
+  function cleanupControls() {
+    document.querySelectorAll(`[${CONTROL_ATTRIBUTE}]`).forEach((controls) => {
+      const message = controls.previousElementSibling;
+      const stillValid = message instanceof HTMLElement &&
+        message.hasAttribute(ATTACHED_ATTRIBUTE) &&
+        roleFromElement(message) === "assistant" &&
+        cleanVisibleText(message);
+      if (!stillValid) controls.remove();
+    });
 
+    document.querySelectorAll(`[${ATTACHED_ATTRIBUTE}]`).forEach((message) => {
+      const controls = message.nextElementSibling;
+      if (!controls?.hasAttribute(CONTROL_ATTRIBUTE)) {
+        message.removeAttribute(ATTACHED_ATTRIBUTE);
+      }
+    });
+  }
+
+  function attachControls() {
+    cleanupControls();
+    for (const candidate of findMessages()) {
+      if (candidate.role !== "assistant") continue;
+      const next = candidate.element.nextElementSibling;
+      if (candidate.element.hasAttribute(ATTACHED_ATTRIBUTE) && next?.hasAttribute(CONTROL_ATTRIBUTE)) continue;
       candidate.element.setAttribute(ATTACHED_ATTRIBUTE, "true");
       createControls(candidate.element);
     }
   }
 
   function scheduleScan() {
-    if (scanTimer) {
-      return;
-    }
-
+    if (scanTimer) return;
     scanTimer = window.setTimeout(() => {
       scanTimer = null;
       attachControls();
@@ -390,9 +301,7 @@
   }
 
   function start() {
-    if (!isSupportedPage() || observer || !document.body) {
-      return;
-    }
+    if (!isSupportedPage() || observer || !document.body) return;
 
     attachControls();
     observer = new MutationObserver((mutations) => {
@@ -401,9 +310,7 @@
           ? mutation.target.closest(`[${CONTROL_ATTRIBUTE}]`)
           : null;
         return !target && (mutation.type === "childList" || mutation.type === "characterData");
-      })) {
-        scheduleScan();
-      }
+      })) scheduleScan();
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
@@ -412,15 +319,11 @@
     window.setInterval(() => {
       if (window.location.href !== lastUrl) {
         lastUrl = window.location.href;
+        cleanupControls();
         scheduleScan();
       }
-    }, 1000);
+    }, 500);
   }
 
-  window.ResponseCollectorQwen = Object.freeze({
-    isSupportedPage,
-    findMessages,
-    start
-  });
+  window.ResponseCollectorQwen = Object.freeze({ isSupportedPage, findMessages, start });
 })();
-
